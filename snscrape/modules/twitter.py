@@ -110,10 +110,15 @@ class Medium:
 
 
 @dataclasses.dataclass
+class Dimensions:
+	width: int
+	height: int
+
+@dataclasses.dataclass
 class Photo(Medium):
 	previewUrl: str
 	fullUrl: str
-
+	dimensions: typing.Optional[Dimensions] = None
 
 @dataclasses.dataclass
 class VideoVariant:
@@ -128,6 +133,7 @@ class Video(Medium):
 	variants: typing.List[VideoVariant]
 	duration: typing.Optional[float] = None
 	views: typing.Optional[int] = None
+	dimensions: typing.Optional[Dimensions] = None
 
 
 @dataclasses.dataclass
@@ -925,7 +931,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 	def _make_medium(self, medium, tweetId):
 		if medium['type'] == 'photo':
 			if '?format=' in medium['media_url_https'] or '&format=' in medium['media_url_https']:
-				return Photo(previewUrl = medium['media_url_https'], fullUrl = medium['media_url_https'])
+				return Photo(previewUrl = medium['media_url_https'], fullUrl = medium['media_url_https'], dimensions={"width": medium["original_info"]["width"], "height": medium["original_info"]["height"]})
 			if '.' not in medium['media_url_https']:
 				_logger.warning(f'Skipping malformed medium URL on tweet {tweetId}: {medium["media_url_https"]!r} contains no dot')
 				return
@@ -936,6 +942,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			return Photo(
 				previewUrl = f'{baseUrl}?format={format}&name=small',
 				fullUrl = f'{baseUrl}?format={format}&name=large',
+				dimensions = {"width": medium["original_info"]["width"], "height": medium["original_info"]["height"]}
 			)
 		elif medium['type'] == 'video' or medium['type'] == 'animated_gif':
 			variants = []
@@ -947,6 +954,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			}
 			if medium['type'] == 'video':
 				mKwargs['duration'] = medium['video_info']['duration_millis'] / 1000
+				mKwargs['dimensions'] = {"width": medium["original_info"]["width"], "height": medium["original_info"]["height"]}
 				if (ext := medium.get('ext')) and (mediaStats := ext.get('mediaStats')) and isinstance(r := mediaStats['r'], dict) and 'ok' in r and isinstance(r['ok'], dict):
 					mKwargs['views'] = int(r['ok']['viewCount'])
 				elif (mediaStats := medium.get('mediaStats')):
