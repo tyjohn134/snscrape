@@ -81,7 +81,7 @@ class Tweet(snscrape.base.Item):
 	mentionedUsers: typing.Optional[typing.List['User']] = None
 	coordinates: typing.Optional['Coordinates'] = None
 	place: typing.Optional['Place'] = None
-	hashtags: typing.Optional[typing.List[str]] = None
+	hashtags: typing.Optional[typing.List['HashTag']] = None
 	cashtags: typing.Optional[typing.List[str]] = None
 	card: typing.Optional['Card'] = None
 	viewCount: typing.Optional[int] = None
@@ -97,6 +97,11 @@ class Tweet(snscrape.base.Item):
 	def __str__(self):
 		return self.url
 
+
+@dataclasses.dataclass
+class HashTag:
+	text: typing.Optional[str]
+	indices: typing.Tuple[int, int]
 
 @dataclasses.dataclass
 class TextLink:
@@ -945,7 +950,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				# Take the first (longitude, latitude) couple of the "place square"
 				kwargs['coordinates'] = Coordinates(coords[0][0][0], coords[0][0][1])
 		if tweet['entities'].get('hashtags'):
-			kwargs['hashtags'] = [o['text'] for o in tweet['entities']['hashtags']]
+			kwargs['hashtags'] = [{'text':o['text'], 'indices':o['indices']} for o in tweet['entities']['hashtags']]
 		if tweet['entities'].get('symbols'):
 			kwargs['cashtags'] = [o['text'] for o in tweet['entities']['symbols']]
 		if card:
