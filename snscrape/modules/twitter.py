@@ -82,6 +82,7 @@ class Tweet(snscrape.base.Item):
 	coordinates: typing.Optional['Coordinates'] = None
 	place: typing.Optional['Place'] = None
 	hashtags: typing.Optional[typing.List['HashTag']] = None
+	mentions: typing.Optional[typing.List['Mention']] = None
 	cashtags: typing.Optional[typing.List[str]] = None
 	card: typing.Optional['Card'] = None
 	viewCount: typing.Optional[int] = None
@@ -97,7 +98,10 @@ class Tweet(snscrape.base.Item):
 	def __str__(self):
 		return self.url
 
-
+@dataclasses.dataclass
+class Mention:
+	username: typing.Optional[str]
+	indices: typing.Tuple[int, int]
 @dataclasses.dataclass
 class HashTag:
 	text: typing.Optional[str]
@@ -940,6 +944,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				kwargs['inReplyToUser'] = User(username = tweet['in_reply_to_screen_name'], id = inReplyToUserId)
 		if tweet['entities'].get('user_mentions'):
 			kwargs['mentionedUsers'] = [User(username = u['screen_name'], id = u['id'] if 'id' in u else int(u['id_str']), displayname = u['name']) for u in tweet['entities']['user_mentions']]
+			kwargs['mentions'] = [Mention(username= u['screen_name'], indices=u['indices']) for u in tweet['entities']['user_mentions']]
 
 		# https://developer.twitter.com/en/docs/tutorials/filtering-tweets-by-location
 		if tweet.get('coordinates'):
