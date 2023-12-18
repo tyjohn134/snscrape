@@ -5,6 +5,7 @@ import dataclasses
 import logging
 import re
 import snscrape.base
+import snscrape.utils
 import typing
 
 
@@ -34,7 +35,7 @@ class Post(snscrape.base.Item):
 
 
 @dataclasses.dataclass
-class User(snscrape.base.Entity):
+class User(snscrape.base.Item):
 	screenname: str
 	uid: int
 	verified: bool
@@ -146,7 +147,7 @@ class WeiboUserScraper(snscrape.base.Scraper):
 	@classmethod
 	def _cli_setup_parser(cls, subparser):
 		subparser.add_argument('--name', dest = 'isName', action = 'store_true', help = 'Use username instead of user ID')
-		subparser.add_argument('user', type = snscrape.base.nonempty_string('user'), help = 'A user ID')
+		subparser.add_argument('user', type = snscrape.utils.nonempty_string_arg('user'), help = 'A user ID')
 
 	@classmethod
 	def _cli_from_args(cls, args):
