@@ -9,6 +9,7 @@ import re
 import snscrape.base
 import snscrape.utils
 import typing
+
 import urllib.parse
 
 
@@ -32,6 +33,9 @@ class TelegramPost(snscrape.base.Item):
 	content: str
 	outlinks: list
 	linkPreview: typing.Optional[LinkPreview] = None
+	images: typing.List[str] = dataclasses.field(default_factory=list)
+	videos: typing.List[str] = dataclasses.field(default_factory=list)
+	
 
 	outlinksss = snscrape.base._DeprecatedProperty('outlinksss', lambda self: ' '.join(self.outlinks), 'outlinks')
 
@@ -81,16 +85,38 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 
 	def _soup_to_items(self, soup, pageUrl, onlyUsername = False):
 		posts = soup.find_all('div', attrs = {'class': 'tgme_widget_message', 'data-post': True})
+		
 		for post in reversed(posts):
 			if onlyUsername:
 				yield post['data-post'].split('/')[0]
 				return
+			images = []
+			videos = []
 			dateDiv = post.find('div', class_ = 'tgme_widget_message_footer').find('a', class_ = 'tgme_widget_message_date')
 			rawUrl = dateDiv['href']
 			if not rawUrl.startswith('https://t.me/') or sum(x == '/' for x in rawUrl) != 4 or rawUrl.rsplit('/', 1)[1].strip('0123456789') != '':
 				_logger.warning(f'Possibly incorrect URL: {rawUrl!r}')
 			url = rawUrl.replace('//t.me/', '//t.me/s/')
+			imgCt = post.find_all('a', {'class': 'tgme_widget_message_photo_wrap'})
+			vidUrls = post.find_all('div', {'class': 'tgme_widget_message_video_wrap'}) 
 			date = datetime.datetime.strptime(dateDiv.find('time', datetime = True)['datetime'].replace('-', '', 2).replace(':', ''), '%Y%m%dT%H%M%S%z')
+			# Extracting images
+			if imgCt is not None and len(imgCt) > 0:
+				for div in imgCt:
+					style = div['style']
+					match = re.search(r"background-image:url\('(.*)'\)", style)
+					if match:
+						bg_image_url = match.group(1)
+						images.append(bg_image_url)
+            # Extracting videos
+			if vidUrls is not None and len(vidUrls) > 0:
+				for video_tag in vidUrls:
+					video_tg = video_tag.find('video')
+					if video_tg is not None:
+						src = video_tg.get('src')
+						if src is not None:
+							videos.append(src)
+						
 			if (message := post.find('div', class_ = 'tgme_widget_message_text')):
 				content = message.text
 				outlinks = []
@@ -126,7 +152,7 @@ class TelegramChannelScraper(snscrape.base.Scraper):
 					else:
 						_logger.warning(f'Could not process link preview image on {url}')
 				linkPreview = LinkPreview(**kwargs)
-			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview)
+			yield TelegramPost(url = url, date = date, content = content, outlinks = outlinks, linkPreview = linkPreview, images= images, videos=videos)
 
 	def get_items(self):
 		r, soup = self._initial_page()
